@@ -10,11 +10,11 @@ import csv
 import difflib
 
 class CleverText(str):
-    """A string which also contain its own version history and record of
-    actions.  Intended for comparing different states of a string as various
-    transformations (replacements, deletions, validation, parsing) are applied
-    to it.  Methods of this class are then readily available for future ETL
-    style processing.
+    """Enhanced string Class which contains a built-in version history and a
+    record of actions.  Intended for comparing different states of a string as
+    various transformations (replacements, deletions, validation, parsing) are
+    applied to it.  Methods of this class are then readily available for future
+    ETL style processing.  Can be extended easily and consistently.
 
     .history : a sequential list of string states
     .initial : shortcut to the initial string supplied
@@ -31,12 +31,53 @@ class CleverText(str):
     TODO: diff
     """
     shortcuts = '{"dep": self.delete_empty_pattern, "clean": self.clean_unwanted_tags, "dmt": self.delete_whole_lines, "h3": self.replace_h1_h2_h3_except_title, "div": self.remove_surrounding_div, "b1": self.format_brackets_1, "rp": self.remove_punctuation, "html1": self.final_html_filters, "h3h3": self.remove_empty_h3, "sai": self.strip_aida_inputs, "rs": self.remove_spaces, "rn": self.remove_noise, "cg": self.correct_grammar, "rt": self.replace_tags, "rie": self.remove_incomplete_ending, "rdl": self.remove_double_linespaces, "frh": self.force_remove_http, "aes": self.add_end_sequence}'
+    # TODO: Remove need for this dict.  Function attributes?
+    # https://stackoverflow.com/a/29286574/7971585
 
-    def __init__(self, text, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.history = [str(text)]
+    # TODO: Add decorator (or setter, or update?) to replace:
+    # self.history += [cleaner.clean_html(self.final)]
+    #     self.actions += ["clean"]
+    #     return self.final
+
+    def __init__(self, initial, *rest):
+        self.history = [initial] + list(rest)
         self.actions = ["initial"]
-        self.transformers = eval(CleverText.shortcuts)
+
+    def update(self, value, action=""):
+        """Update the object in place"""
+        self.history.append(str(value))
+        self.actions.append(str(action))
+
+    def _generic1(self, method, *args, **kwargs):
+        return getattr(self.final, method)(*args, **kwargs)
+
+    def _generic2(self, method, other):
+        if isinstance(other, CleverText):
+            return getattr(self.final, method)(other.final)
+        if isinstance(other, str):
+            return getattr(self.final, method)(other)
+        return NotImplemented
+
+    for method in ("__eq__", "__ne__", "__lt__", "__le__", "__ge__", "__gt__", "__contains__"):
+        vars()[method] = functools.partialmethod(_generic2, method)
+
+    for method in dir(str):
+        if not method.startswith("__") or method in ("__mul__", "__rmul__", "__len__", "__getitem__", "__add__", "__mod__"):
+            vars()[method] = functools.partialmethod(_generic1, method)
+
+    def __iadd__(self, value):
+        self.update(self.final + value)
+        return self
+
+    def __iter__(self):
+        for c in self.final:
+            yield c
+
+    def __repr__(self):
+        return f"CleverText({', '.join(repr(s) for s in self.history)})"
+
+    def __str__(self):
+        return self.final
 
     @property
     def initial(self):
@@ -46,10 +87,9 @@ class CleverText(str):
     def final(self):
         return self.history[-1]
 
-    # @final.setter
-    # def final(self, value):
-    # If already initialised, add to .history and .actions
-    #     self.history += [value]
+    @final.setter
+    def final(self, value):
+        self.update(value)
 
     @property
     def checksum(self):
@@ -64,6 +104,13 @@ class CleverText(str):
         result = transform_function()
         return result
 
+    def by_shortcut(self, shortcut):
+        """
+        Return a list of all .history result with action code matching shortcut.
+        """
+        index_list = [i for i,x in enumerate(self.actions) if x==shortcut]
+        return [self.history[i] for i in index_list]
+
     def pretty(self, **kwargs):
         from textwrap import wrap
         width = kwargs.get("width") or 100
@@ -73,6 +120,13 @@ class CleverText(str):
             for item in x:
                 print(item)
             print()
+
+    def save_AB(self, prefix="CleverText"):
+        """Saves two files for comparison based on .initial and .final"""
+        for text in [self.initial, self.final]:
+            filename = f'{prefix}_{"A" if text==self.initial else "B"}.txt'
+            with open(filename, 'w', encoding='utf-8') as file:
+                file.write(text)
 
     @staticmethod
     def apply_to_csv(shortcut_list, filepath=None, column=None):
@@ -112,37 +166,6 @@ class CleverText(str):
             df.to_csv(filepath, encoding='utf-8', index=False)
             print(f"✓ {df.shape[0]} rows and {len(df.columns)} columns {list(df.columns)} saved to:\n{filepath}")
         return df
-
-    def update(self, new_string, action="n/a"):
-        self.history += [str(new_string)]  # In case CleverText object received
-        self.actions += [action]
-
-    def _replace(self):
-        pass
-        #TODO: Create wrapped functions (.update) for existing string methods
-
-
-    def save_AB(self, prefix="CleverText"):
-        """Saves two files for comparison based on .initial and .final"""
-        for text in [self.initial, self.final]:
-            filename = f'{prefix}_{"A" if text==self.initial else "B"}.txt'
-            with open(filename, 'w', encoding='utf-8') as file:
-                file.write(text)
-
-    def final_html_filters(self):
-        """Common final processing filters e.g. for AIDA and BlogSpinner"""
-        self.delete_empty_pattern()
-        self.clean_unwanted_tags()
-        self.delete_whole_lines()
-        self.replace_h1_h2_h3_except_title()
-        self.remove_surrounding_div()
-        self.replace_tags()
-        self.remove_empty_h3()
-        self.remove_incomplete_ending()
-        self.remove_double_linespaces()
-        self.force_remove_http()
-        self.add_end_sequence()
-        return self.final
 
     def remove_double_linespaces(self):
         self.history += [self.final.replace("\n\n", "\n")]
@@ -205,11 +228,10 @@ class CleverText(str):
         tags = tags or ['img', 'a', 'ul', 'ol', 'br']
         # cleaner = Cleaner(scripts=True, embedded=True, meta=True, page_structure=True, links=True, style=True, remove_tags = ['img', 'a'])
         # cleaner = Cleaner(scripts=True, embedded=True, meta=True, page_structure=True, links=True, style=True, kill_tags = ['img', 'a'])
-        cleaner = Cleaner(kill_tags = kill_tags)
+        cleaner = Cleaner(kill_tags = tags)
         self.history += [cleaner.clean_html(self.final)]
         self.actions += ["clean"]
         return self.final
-
 
     def force_remove_http(self):
         """Disregard HTML tags and remove every http/https occurrence"""
@@ -298,19 +320,6 @@ class CleverText(str):
         self.actions += [f"replace {args}"]
         return self.final
 
-    def __repr__(self):
-        return self.final
-
-    def __str__(self):
-        return self.final
-
-    def by_shortcut(self, shortcut):
-        """
-        Return a list of all .history result with action code matching shortcut.
-        """
-        index_list = [i for i,x in enumerate(self.actions) if x==shortcut]
-        return [self.history[i] for i in index_list]
-
     def diff(self, index_a=0, index_b=None, print_only=True):
         """
         Print or return a colour-coded diff of two items in a list of strings.  Default: Compare first and last strings; print the output; return None.
@@ -343,3 +352,56 @@ def info():
     message += CleverText.shortcuts.replace("self","CleverText").replace("{","\n").replace("}","\n").replace(', "', '\n"')
     message += "\nSee also clevertext_readme.md"
     print(message)
+
+def format_bytes(bytes, unit, SI=False):
+    """
+    Converts bytes to common units such as kb, kib, KB, mb, mib, MB
+
+    Parameters
+    ---------
+    bytes: int
+        Number of bytes to be converted
+
+    unit: str
+        Desired unit of measure for output
+
+
+    SI: bool
+        True -> Use SI standard e.g. KB = 1000 bytes
+        False -> Use JEDEC standard e.g. KB = 1024 bytes
+
+    Returns
+    -------
+    str:
+        E.g. "7 MiB" where MiB is the original unit abbreviation supplied
+    """
+    if unit.lower() in "b bit bits".split():
+        return f"{bytes*8} {unit}"
+    unitN = unit[0].upper()+unit[1:].replace("s","")  # Normalised
+    reference = {"Kb Kib Kibibit Kilobit": (7, 1),
+                 "KB KiB Kibibyte Kilobyte": (10, 1),
+                 "Mb Mib Mebibit Megabit": (17, 2),
+                 "MB MiB Mebibyte Megabyte": (20, 2),
+                 "Gb Gib Gibibit Gigabit": (27, 3),
+                 "GB GiB Gibibyte Gigabyte": (30, 3),
+                 "Tb Tib Tebibit Terabit": (37, 4),
+                 "TB TiB Tebibyte Terabyte": (40, 4),
+                 "Pb Pib Pebibit Petabit": (47, 5),
+                 "PB PiB Pebibyte Petabyte": (50, 5),
+                 "Eb Eib Exbibit Exabit": (57, 6),
+                 "EB EiB Exbibyte Exabyte": (60, 6),
+                 "Zb Zib Zebibit Zettabit": (67, 7),
+                 "ZB ZiB Zebibyte Zettabyte": (70, 7),
+                 "Yb Yib Yobibit Yottabit": (77, 8),
+                 "YB YiB Yobibyte Yottabyte": (80, 8),
+                 }
+    key_list = '\n'.join(["     b Bit"] + [x for x in reference.keys()]) +"\n"
+    if unitN not in key_list:
+        raise IndexError(f"\n\nConversion unit must be one of:\n\n{key_list}")
+    units, divisors = [(k,v) for k,v in reference.items() if unitN in k][0]
+    if SI:
+        divisor = 1000**divisors[1]/8 if "bit" in units else 1000**divisors[1]
+    else:
+        divisor = float(1 << divisors[0])
+    value = bytes / divisor
+    return f"{value:,.0f} {unitN}{(value != 1 and len(unitN) > 3)*'s'}"
