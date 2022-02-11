@@ -70,57 +70,29 @@ You can create a `CleverText` instance using keyword arguments:
 
 ## 7. ADDING YOUR OWN METHODS
 
+## CONTRIBUTING NEW METHODS AS PULL REQUESTS
 
 
 ## 8. ENABLING AUTO-SAVE
 
 
-## 9. CREATING YOUR OWN AUTO-SAVE/AUTO-DELETE FUNCTION
-
-As well as autosave/autodelete options baked in to `CleverText`, you can set pretty much any custom function to run **automatically** when a `CleverText` value is *created, changed, or deleted*, for example to update a database, save to a file, or synchronise with cloud storage etc.  Less code for you, and less chance you'll forget to explicitly call that crucial update function...
-
-This can be enabled at a *class* level, or by creating subclasses of `CleverText` with different options, or an *object/instance* level.  We strongly recommend the *object/instance* approach wherever possible, but you have the choice.
-
-### **Autosaving a particular object/instance:**
-
-You can either overwrite the `.save()` / `.delete()` methods when you create your object, or use `.set_autosave()` / `.set_autodelete()` after the event:
-
-### **Autosaving at a class level:**
-
-Simple to do, but beware this could change all existing `CleverText` instances as well as all future ones:
-
-    >>> CleverText.save = your_save_function
-    >>> CleverText.delete = your_delete_function
-
 ### **Creating Subclasses:**
 
 If you create a subclass of `CleverText` remember to call `super().__init__()` *before* trying to set any further class or object attributes, otherwise you'll run into trouble:
 
-    class AutoStore(CleverText):
+    class YourTextClass(CleverText):
         def __init__(self, *args, **kwargs):
             self.setattr_direct('index', [])
             super().__init__(*args, **kwargs)
 
-        def save(self, name, value):
-            """ Keep a separate 'store' for data in .index """
-            self.index.append((name, value))
-
-    class AutoConfirm(CleverText): pass
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-
-        def save(self, name, value):
-            """ Print confirmation of the latest change """
-            print(f"{name.title()}: {value.upper()}")
-
-### CONTRIBUTING METHODS AS PULL REQUESTS
 
 
-## 10. CONTRIBUTING TO THE CORE DESIGN
+## 10. CONTRIBUTING
 
 We'd love to see Pull Requests (and relevant tests) from other contributors, particularly if you can help:
 
-* Evolve `CleverText` to make it play nicely with other classes and formats.  [For example: `datetime`](https://github.com/PFython/clevertext/issues/5).
+* Tackle any of the outstanding issues listed [here](https://github.com/PFython/clevertext/issues).
+* Evolve `CleverText` to make it play nicely with other classes, packages, and formats, for example `datetime`, `pandas` and `textwrap`.
 * Put the finishing touches on the **docstrings** to enable autocompletion in modern IDEs (this is neither the author's strong suit nor his passion!).
 * Improve the structure and coverage of `test_clevertext.py`.
 
