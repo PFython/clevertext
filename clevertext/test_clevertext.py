@@ -61,6 +61,9 @@ class Test_Core_Functions:
             pass
         c1 = CleverText("%02d")
         assert repr(c1 % 4) == "'04'"
+        assert "/".join(c for c in ct) == "f/i/n/a/l"
+        assert ct.join("1 2 3".split()) == "1final2final3"
+        assert CleverText("1 2 3").split() == ["1", "2", "3"]
 
     def test_grammar_checker(self):
         payload = "The benefits of life insurance is obvious"

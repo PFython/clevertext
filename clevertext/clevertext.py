@@ -70,8 +70,7 @@ class CleverText(str):
         return self
 
     def __iter__(self):
-        for c in self.final:
-            yield c
+        return iter(self.final)
 
     def __repr__(self):
         return f"CleverText({', '.join(repr(s) for s in self.history)})"
