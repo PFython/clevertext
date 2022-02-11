@@ -8,6 +8,7 @@ import requests
 from lxml.html.clean import clean_html, Cleaner
 import csv
 import difflib
+import functools
 
 class CleverText(str):
     """Enhanced string Class which contains a built-in version history and a
