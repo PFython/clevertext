@@ -8,7 +8,7 @@ from setuptools import setup
 HERE = Path(__file__).parent
 NAME = "clevertext"
 GITHUB_ID = "Pfython"
-VERSION = "0.1"
+VERSION = "0.1.1rc1"
 DESCRIPTION = "Keep and compare a history of changes to your Python strings."
 LICENSE = "MIT License"
 AUTHOR = "Peter Fison"
@@ -16,7 +16,7 @@ EMAIL = "peter@awsom.solutions"
 URL = "https://github.com/Pfython/clevertext"
 KEYWORDS = "clevertext, text, str, string, diff, NLP, AI, HTML, backup, restore, data, history, tracking, version, JSON, autosave, autodelete, to_lines, from_lines, to_list, from_list, database, utility, tool, clever"
 CLASSIFIERS = "Development Status :: 2 - Pre-Alpha, Intended Audience :: Developers, Operating System :: OS Independent, Programming Language :: Python :: 3.10, Programming Language :: Python :: 3.7, Programming Language :: Python :: 3.8, Programming Language :: Python :: 3.9, Topic :: Software Development :: Libraries :: Python Modules, Topic :: Software Development :: Object Brokering, Topic :: System :: Logging, Topic :: Utilities, License :: OSI Approved :: MIT License"
-REQUIREMENTS = ""
+REQUIREMENTS = "cleverdict, "
 
 
 def comma_split(text: str):
