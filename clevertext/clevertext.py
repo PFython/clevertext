@@ -8,9 +8,11 @@ import requests
 from lxml.html.clean import clean_html, Cleaner
 import csv
 import difflib
-import functools
+# import functools
+import collections
 
-class CleverText(str):
+# class CleverText(str):
+class CleverText(collections.UserString, str):
     """Enhanced string Class which contains a built-in version history and a
     record of actions.  Intended for comparing different states of a string as
     various transformations (replacements, deletions, validation, parsing) are
@@ -40,44 +42,27 @@ class CleverText(str):
     #     self.actions += ["clean"]
     #     return self.final
 
+
     def __init__(self, initial, *rest):
         self.history = [initial] + list(rest)
-        self.actions = ["initial"]
+        super().__init__(self.history[-1])
 
-    def update(self, value, action=""):
-        """Update the object in place"""
+    def update(self, value):
         self.history.append(str(value))
-        self.actions.append(str(action))
-
-    def _generic1(self, method, *args, **kwargs):
-        return getattr(self.final, method)(*args, **kwargs)
-
-    def _generic2(self, method, other):
-        if isinstance(other, CleverText):
-            return getattr(self.final, method)(other.final)
-        if isinstance(other, str):
-            return getattr(self.final, method)(other)
-        return NotImplemented
-
-    for method in ("__eq__", "__ne__", "__lt__", "__le__", "__ge__", "__gt__", "__contains__"):
-        vars()[method] = functools.partialmethod(_generic2, method)
-
-    for method in dir(str):
-        if not method.startswith("__") or method in ("__mul__", "__rmul__", "__len__", "__getitem__", "__add__", "__mod__"):
-            vars()[method] = functools.partialmethod(_generic1, method)
+        self.data = self.history[-1]
 
     def __iadd__(self, value):
         self.update(self.final + value)
         return self
 
-    def __iter__(self):
-        return iter(self.final)
+    def __mod__(self, value):
+        return self.final.__mod__(value)
 
     def __repr__(self):
         return f"CleverText({', '.join(repr(s) for s in self.history)})"
 
-    def __str__(self):
-        return self.final
+    def __iter__(self):
+        return iter(self.final)
 
     @property
     def initial(self):
@@ -87,9 +72,12 @@ class CleverText(str):
     def final(self):
         return self.history[-1]
 
-    @final.setter
-    def final(self, value):
-        self.update(value)
+    # def __str__(self):
+    #     return self.final
+
+    # @final.setter
+    # def final(self, value):
+    #     self.update(value)
 
     @property
     def checksum(self):
@@ -346,6 +334,31 @@ class CleverText(str):
         if not print_only:
             return output
         print(f"\n{output}\n")
+
+    def youtube_time_to_seconds(duration="P1W2DT6H21M32S"):
+        """
+        Converts YouTube duration (ISO 8061)
+        into Seconds
+
+        see http://en.wikipedia.org/wiki/ISO_8601#Durations
+        """
+        ISO_8601 = re.compile(
+            'P'   # designates a period
+            '(?:(?P<years>\d+)Y)?'   # years
+            '(?:(?P<months>\d+)M)?'  # months
+            '(?:(?P<weeks>\d+)W)?'   # weeks
+            '(?:(?P<days>\d+)D)?'    # days
+            '(?:T' # time part must begin with a T
+            '(?:(?P<hours>\d+)H)?'   # hours
+            '(?:(?P<minutes>\d+)M)?' # minutes
+            '(?:(?P<seconds>\d+)S)?' # seconds
+            ')?')   # end of time part
+        # Convert regex matches into a short list of time units
+        units = list(ISO_8601.match(duration).groups()[-3:])
+        # Put list in ascending order & remove 'None' types
+        units = list(reversed([int(x) if x != None else 0 for x in units]))
+        # Do the maths
+        return sum([x*60**units.index(x) for x in units])
 
 def info():
     message = "\nCleverText.shortcuts:\n"
