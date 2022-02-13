@@ -84,6 +84,14 @@ class CleverText(collections.UserString, str):
         """Returns a list of tuples based on .actions and .history length"""
         return list(zip(self.actions, [len(x) for x in self.history]))
 
+    @property
+    def linecount(self, index=-1):
+        return len(self.history[index].split("\n"))
+
+    @property
+    def wordcount(self, index=-1):
+        return len(self.history[index].split(" "))
+
     def apply(self, shortcut):
         """Helper method to apply a given method to .final based on shortcuts"""
         transform_function = self.transformers.get(shortcut)
